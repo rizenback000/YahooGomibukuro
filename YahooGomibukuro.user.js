@@ -118,7 +118,7 @@
   $(initDiv).css(initDivStyle);
   $("#soc_f").before(initDiv);
   $(initDiv).click(function(){
-    if ( confirm("IgnoreHappysetのNGユーザーリストを初期化しますか？") ){
+    if ( confirm(SCRIPT_NAME+"のNGユーザーリストを初期化しますか？") ){
       resetIgnoreSetting();
     }
   });
