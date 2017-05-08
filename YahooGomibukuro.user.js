@@ -30,13 +30,21 @@
     MyData: function(dataName) {
       return "data-" + PRODUCT + "_" + dataName;
     },
+
+    /**
+     * ConfirmRegExUser - 正規表現が正しくユーザ名と一致するかチェックして一致しなければ確認を求める
+     *
+     * @param  {string} patternName パターン
+     * @param  {string} orgUserName テスト対象のユーザ名
+     * @return {boolean}             一致すればtrue,一致しなければconfirmの戻り値
+     */
     ConfirmRegExUser: function(patternName, orgUserName){
       var reg = new RegExp("^"+patternName+"$");
       console.log("ConfirmRegExUser="+patternName);
-      if ( !orgUserName.match(reg) ){
-        return confirm("入力された設定値「"+patternName+"」はユーザ名「"+orgUserName+"」と一致しません。\n本当にこの設定に変更しますか？");
-      }else{
+      if ( orgUserName.match(reg) ){
         return true;
+      }else{
+        return confirm("入力された設定パターン「"+patternName+"」はユーザ名「"+orgUserName+"」と一致しません。\n本当にこの設定に変更しますか？");
       }
     }
 
