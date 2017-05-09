@@ -12,15 +12,25 @@
 
 (function($) {
   const PRODUCT = "YahooGomibukuro";
-  const VER = "1.0.0a";
+  const VER = "1.1.0a";
   const BTN_REG = "NG登録";
   const BTN_DEL = "NG解除";
   const BTN_SHOW = "一時表示";
   const BTN_HIDE = "閉じる";
   const NG_USER = "NGUser";
   const NG_ICON = "data:image/gif;base64,R0lGODlhMAARAIAAAAAAAP///yH5BAAAAAAALAAAAAAwABEAAAJbhI+py+0Po5y02ntCyFmjzRmaJ44gYH4nuIbiq5yfu7EoI9vx0r62PAuRgone7Vcy3jqrVDLnW8Kk1NI0CD1SlUBYdzlsTo1DLI/WYeZG6iZ7/MXI5/S6/W4vAAA7";
+  const ManageHeaderText = function(itemCnt){
+    return "NG登録一覧(登録数:"+itemCnt+")";
+  };
+
+  var $mMngButton;
 
   var Util = {
+    ConfirmRet:{
+      MATCH:1,
+      CANCEL:0,
+      FORCE_YES:-1
+    },
     /**
      * MyData - data-{product}_dataNameの文字列生成
      *
@@ -42,14 +52,16 @@
       var reg = new RegExp("^"+patternName+"$");
       console.log("ConfirmRegExUser="+patternName);
       if ( orgUserName.match(reg) ){
-        return true;
+        return Util.ConfirmRet.MATCH;
       }else{
-        return confirm("入力された設定パターン「"+patternName+"」はユーザ名「"+orgUserName+"」と一致しません。\n本当にこの設定に変更しますか？");
+        if (confirm("入力された設定パターン「"+patternName+"」はユーザ名「"+orgUserName+"」と一致しません。\n本当にこの設定に変更しますか？")){
+          return Util.ConfirmRet.FORCE_YES;
+        }else{
+          return Util.ConfirmRet.CANCEL;
+        }
       }
     }
-
   };
-
 
   /**
    * NG前のユーザ、アイコンID
@@ -69,6 +81,10 @@
     NGLIST: Util.MyData("modal-nglist")
   };
 
+
+  function UpdateManageButtonText($mngButton){
+    $mngButton.text("NGリスト管理(現在の登録数:" + GM_listValues().length + ")");
+  }
 
   /**
    * NGProc - ユーザ名とNGリストが一致するものを非表示処理
@@ -161,17 +177,20 @@
         var orgUserName = $user.attr(Origin.User);
         if ($(this).text() == BTN_DEL) {
           //NG解除・編集モーダルを表示
-          ShowNGEditWindow(orgUserName);
+          ShowNGEditWindow(orgUserName, false);
         } else {
           //NG登録処理
           userName = prompt("NG登録するユーザ名を入力してください(正規表現利用可)", orgUserName);
           if (userName != null && userName != "") {
-            if (!Util.ConfirmRegExUser(userName, orgUserName)){
+            var ret = Util.ConfirmRegExUser(userName, orgUserName);
+            console.log(ret);
+            if (ret == Util.ConfirmRet.CANCEL){
               return false;
             }
             GM_setValue(userName, "");
             //NGProc($user.parents(".usrQstn"));
             NGProc($("body"));
+            UpdateManageButtonText($mMngButton);
           }
         }
       });
@@ -230,17 +249,26 @@
   /**
    * GetMatchNGUser - NG設定に一致するNGキーの配列を返す
    *
-   * @param  {string} userName テスト対象になるユーザ名
+   * @param  {string} testUserName テスト対象になるユーザ名
+   * @param  {boolean} getall テスト対象に関わらず全設定を取得する
    * @return {type}          一致するキーの配列
    */
-  function GetMatchNGUser(testUserName) {
+  function GetMatchNGUser(testUserName, getall) {
     var matchAry = [];
-    $.each(GM_listValues(), function(value, key) {
-      var reg = new RegExp(key);
-      if (testUserName.match(reg)) {
+    if (getall){
+      //全取得
+      $.each(GM_listValues(), function(value, key){
         matchAry.push(key);
-      }
-    });
+      });
+    }else{
+      //正規表現に一致するものだけ
+      $.each(GM_listValues(), function(value, key) {
+        var reg = new RegExp(key);
+        if (testUserName.match(reg)) {
+          matchAry.push(key);
+        }
+      });
+    }
     return matchAry;
   }
 
@@ -249,15 +277,17 @@
    * AppendNGListItems - NG設定に一致するキー一覧をNGリストに追加する
    *
    * @param  {string} testUserName テスト対象になるユーザ名
-   * @return {type}          description
+   * @param  {boolean} getall テスト対象に関わらず全設定を取得する
+   * @return {number}          一致する要素数
    */
-  function AppendNGListItems(testUserName) {
-    var matchAry = GetMatchNGUser(testUserName);
+  function AppendNGListItems(testUserName, getall) {
+    var matchAry = GetMatchNGUser(testUserName, getall);
     var $mdNGList = $("#" + MDID.NGLIST);
     $mdNGList.children().remove();
     $(matchAry).each(function() {
       $mdNGList.append($("<option></option>", { text: this }));
     });
+    return matchAry.length;
   }
 
 
@@ -274,34 +304,29 @@
 
 
   /**
-   * CreateInitButton - 初期化ボタンを生成
+   * CreateManageButton - 初期化ボタンを生成
    *
    * @return {type}  description
    */
-  function CreateInitButton() {
-    var $initButton = $("<div></div>", {
-      text: "NGリスト初期化(現在の登録数:" + GM_listValues().length + ")"
-    });
-    var initButtonStyle = {
-      color: "#0",
-      textShadow: "0 1px 2px #ffffff",
-      borderRadius: "3px",
-      backgroundColor: "#eaeaea",
-      boxShadow: "0 1px 0 rgba(255, 255, 255, 0.3) inset,0 0 5px rgba(0, 0, 0, 0.3) inset,0 1px 2px rgba(0, 0, 0, 0.3)",
-      padding: "5px 5px",
-      cursor: "pointer",
-      textAlign: "center"
-    }
+  function CreateManageButton() {
+    const WARN_CNT = 1000;
 
-    $initButton.css(initButtonStyle);
-    $("#soc_f").before($initButton);
+    var $initPanel = $("<div></div>", { style: "text-align:center; margin-bottom:1em;"} );
+    var $initButton = $("<button />", { text: "test", style:"width:100%" });
+    $initPanel.append($initButton);
+    $("#soc_f").before($initPanel);
     $initButton.click(function() {
-      if (confirm(PRODUCT + "のNGユーザーリストを初期化しますか？\n(登録件数により時間がかかる場合があります)")) {
-        alert("NGリストを初期化します。完了後に再度通知されます。");
-        ResetIgnoreSetting();
-        alert("NGリストの初期化を完了しました");
+      //1000件を超える場合は時間がかかる旨を表示する
+      if (GM_listValues().length > WARN_CNT){
+        if ( !confirm("NG登録数が多いため管理ウィンドウの表示に時間がかかる場合があります\n表示してよろしいですか？") ){
+          return false;
+        }
       }
+      ShowNGEditWindow("全ユーザ取得だからここは関係ない", true);
+
     });
+    UpdateManageButtonText($initButton);
+    return $initButton;
   }
 
 
@@ -336,12 +361,12 @@
     var cssNGMatchList = {
       width: "100%"
     };
-
+    var $modalOverlay = $("");
     var $modalContent = $("<div></div>", { id: MDID.CONTENT });
     var $modalHeader = $("<div></div>", { id: MDID.HEADER });
-    var $ngMatchList = $("<select></select>", { id: MDID.NGLIST });
+    var $ngMatchList = $("<select></select>", { id: MDID.NGLIST, size: "6", multiple: true });
     var $ngUserDelButton = $("<button />", { text: "削除" });
-    var $ngUserEditButton = $("<button />", { text: "編集" });
+    var $ngUserEditButton = $("<button />", { text: "編集", disabled:true });
     var $modalCloseButton = $("<button />", { text: "閉じる" });
     $modalContent.css(cssModalContent);
     $modalHeader.css(cssModalHeader);
@@ -363,38 +388,94 @@
 
     //削除ボタン
     $ngUserDelButton.click(function() {
-      var deleteUser = $ngMatchList.text();
-      if (confirm("本当にこのNG設定を削除しますか？\n\n" + deleteUser)) {
-        GM_deleteValue(deleteUser, "");
-        $ngMatchList.children("option:selected").remove();
+      var $selectedOption = $ngMatchList.children("option:selected");
+      var confirmText = "選択中のNG設定を削除しますか？\n\n";
+      var delTgtAry = [];
+      const SHOW_CNT = 4;
+      var cnt = 0;
+
+      if ($selectedOption.length <= 0){
+        alert("削除対象を1つ以上選択してください。");
+        return false;
+      }else{
+
+        $selectedOption.each(function (){
+          var key = $(this).text();
+          console.log(key);
+          delTgtAry.push(key);
+          if (cnt < SHOW_CNT){
+            confirmText = confirmText + key + "\n"
+          }
+          cnt++;
+        });
+
+        //選択されたものを一部だけ表示、それ以上は省略
+        if (cnt > SHOW_CNT){
+          confirmText = confirmText + "その他(全"+delTgtAry.length+"件)\n";
+          confirmText = confirmText + "\n複数件の削除にはしばらく時間がかかる場合があります。";
+        }
+      }
+
+      if (confirm(confirmText)) {
+        if (cnt > SHOW_CNT) alert("削除を開始します。削除完了後に再度通知されます。");
+        delTgtAry.forEach(function (key){
+          GM_deleteValue(key);
+        });
+
+        //削除後も設定が存在する場合は閉じずに描画し直す
+        $selectedOption.remove();
+        if (cnt > SHOW_CNT) alert("選択したNG設定の削除を完了しました。");
         if ($ngMatchList.children().length <= 0) {
           $modalCloseButton.trigger("click");
         }
-        console.log("delete user:"+deleteUser);
+        $modalHeader.text(ManageHeaderText($ngMatchList.children().length));
         NGProc($("body"));
+        UpdateManageButtonText($mMngButton);
       }
     });
+
 
     //編集ボタン
     $ngUserEditButton.click(function() {
       var orgUserName = $modalContent.attr(Origin.User);
-      var userName = prompt("変更後のNG設定を入力してください(正規表現利用可)", $ngMatchList.text());
+      var $selectedOption = $ngMatchList.children("option:selected");
+      var selectName = $selectedOption.text();
+      var changedName = prompt("変更後のNG設定を入力してください(正規表現利用可)", selectName);
 
-      if (userName != "" && userName != null) {
+      if (changedName != "" && changedName != null) {
         //入力されたユーザ名が一致するかチェック
-        if ( !Util.ConfirmRegExUser(userName, orgUserName) ){
+        var ret = Util.ConfirmRegExUser(changedName, orgUserName);
+        if ( ret == Util.ConfirmRet.CANCEL ){
           return false;
         }
         //今の設定を削除後に入力された設定を追加することで編集
-        GM_deleteValue($ngMatchList.text(), "");
-        GM_setValue(userName, "");
-        //表示中NG設定リストを更新
-        AppendNGListItems(orgUserName);
+        GM_deleteValue($ngMatchList.text());
+        GM_setValue(changedName, "");
+
+        //パターンマッチしているときだけ表示中の設定リストを更新
+        if (ret == Util.ConfirmRet.MATCH){
+          $selectedOption.text(changedName);
+        }else{
+          $selectedOption.remove();
+        }
+
         //一致するものが一つもなければモーダルを閉じる
         if ($ngMatchList.children().length <= 0) {
           $modalCloseButton.trigger("click");
         }
         NGProc($("body"));
+      }
+    });
+
+
+    //NGリスト
+    $ngMatchList.change(function(){
+      //1つ以上の選択時には編集ボタン無効(面倒だから複数編集には対応しない)
+      console.log("change");
+      if ($ngMatchList.children("option:selected").length == 1){
+        $ngUserEditButton.attr("disabled", false);
+      }else{
+        $ngUserEditButton.attr("disabled", true);
       }
     });
 
@@ -405,14 +486,21 @@
    * ShowNGEditWindow - NG設定編集ウィンドウの表示
    *
    * @param  {string} orgUserName 呼び出したユーザ名
+   * @param  {boolean} getall テスト対象に関わらず全設定を取得する
    * @return {type}          description
    */
-  function ShowNGEditWindow(orgUserName) {
-    AppendNGListItems(orgUserName);
+  function ShowNGEditWindow(orgUserName, getall) {
+    var itemCnt = AppendNGListItems(orgUserName, getall);
     CenteringModalSyncer();
-    $("#" + MDID.CONTENT).fadeIn("fast");
-    $("#" + MDID.CONTENT).attr(Origin.User, orgUserName);
-    $("#" + MDID.HEADER).text("「"+orgUserName+"」と一致するNG登録一覧");
+    var $mdContent = $("#"+MDID.CONTENT);
+    var $mdHeader = $("#"+MDID.HEADER);
+    $mdContent.fadeIn("fast");
+    if (getall){
+      $mdHeader.text(ManageHeaderText(itemCnt));
+    }else{
+      $mdContent.attr(Origin.User, orgUserName);
+      $mdHeader.text("「"+orgUserName+"」と一致するNG登録一覧");
+    }
   }
 
 
@@ -473,10 +561,14 @@
     obs.observe(this, obsOptions);
   });
 
+  console.log("awe");
   $body = $("body");
+  console.log("awe2");
   CreateNGButton($body);
+  console.log("awe3");
   NGProc($body);
   CreateNGEditWindow();
-  CreateInitButton();
+  $mMngButton = CreateManageButton();
+  $(window).resize(CenteringModalSyncer);
 
 })(jQuery);
