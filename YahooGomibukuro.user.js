@@ -435,12 +435,17 @@
 
       if (changedName != '' && changedName != null) {
         //入力されたユーザ名が一致するかチェック
-        const ret = Util.confirmRegExUser(changedName, orgUserName);
-        if ( ret == ENUM.CONFIRM_RET.CANCEL ) {
-          return false;
+        let ret;
+        if (orgUserName != ''){
+          ret = Util.confirmRegExUser(changedName, orgUserName);
+          if ( ret == ENUM.CONFIRM_RET.CANCEL ) {
+            return false;
+          }
+        }else{
+          ret = ENUM.CONFIRM_RET.MATCH;
         }
         //今の設定を削除後に入力された設定を追加することで編集
-        GM_deleteValue($ngMatchList.text());
+        GM_deleteValue(selectName);
         GM_setValue(changedName, '');
 
         //パターンマッチしているときだけ表示中の設定リストを更新
@@ -489,6 +494,7 @@
     $mdContent.fadeIn('fast');
 
     if (getall) {
+      $mdContent.attr(CONSTANT.ORIGINID.USER, "");
       $mdHeader.text(manageHeaderText());
     }else{
       $mdContent.attr(CONSTANT.ORIGINID.USER, orgUserName);
