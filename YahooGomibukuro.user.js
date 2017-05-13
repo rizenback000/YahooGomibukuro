@@ -86,7 +86,7 @@
   }
 
 
-  const ManageHeaderText = {
+  const manageHeaderText = {
     all : 'NG登録一覧(登録数:'+GM_listValues().length+')',
     part : function(orgUserName) {
       return '「'+orgUserName+'」と一致するNG登録一覧';
@@ -279,24 +279,6 @@
 
 
   /**
-   * appendNGListItems - NG設定に一致するキー一覧をNGリストに追加する
-   *
-   * @param  {string} testUserName テスト対象になるユーザ名
-   * @param  {boolean} getall テスト対象に関わらず全設定を取得する
-   * @return {number}          一致する要素数
-   */
-  function appendNGListItems(testUserName, getall) {
-    const matchAry = getMatchNGUser(testUserName, getall);
-    const $mdNGList = $('#' + ID.MODAL.NGLIST);
-    $mdNGList.children().remove();
-    $(matchAry).each(function() {
-      $mdNGList.append($('<option></option>', { text: this }));
-    });
-    return matchAry.length;
-  }
-
-
-  /**
    * CreateManageButton - 初期化ボタンを生成
    *
    * @return {object}  作成したボタンのjqueryオブジェクト
@@ -418,7 +400,7 @@
         if ($ngMatchList.children().length <= 0) {
           $modalCloseButton.trigger('click');
         }
-        $modalHeader.text(ManageHeaderText.all);
+        $modalHeader.text(manageHeaderText.all);
         ngProc($('body'));
         updateManageButtonText($mMngButton);
       }
@@ -488,16 +470,22 @@
     const $mdContent = $('#'+ID.MODAL.CONTENT);
     const $mdHeader = $('#'+ID.MODAL.HEADER);
 
-    appendNGListItems(orgUserName, getall);
+    const matchAry = getMatchNGUser(testUserName, getall);
+    const $mdNGList = $('#' + ID.MODAL.NGLIST);
+    $mdNGList.children().remove();
+    $(matchAry).each(function() {
+      $mdNGList.append($('<option></option>', { text: this }));
+    });
+
     centeringModalSyncer();
     $mdContent.fadeIn('fast');
 
     if (getall) {
       $mdContent.attr(ID.ORIGIN.USER, "");
-      $mdHeader.text(ManageHeaderText.all);
+      $mdHeader.text(manageHeaderText.all);
     }else{
       $mdContent.attr(ID.ORIGIN.USER, orgUserName);
-      $mdHeader.text(ManageHeaderText.part(orgUserName));
+      $mdHeader.text(manageHeaderText.part(orgUserName));
     }
   }
 
