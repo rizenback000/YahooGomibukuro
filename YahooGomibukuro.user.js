@@ -86,10 +86,12 @@
   }
 
 
-
-  function manageHeaderText() {
-    return 'NG登録一覧(登録数:'+GM_listValues().length+')';
-  }
+  const ManageHeaderText = {
+    all : 'NG登録一覧(登録数:'+GM_listValues().length+')',
+    part : function(orgUserName) {
+      return '「'+orgUserName+'」と一致するNG登録一覧';
+    }
+  };
 
 
   /**
@@ -416,7 +418,7 @@
         if ($ngMatchList.children().length <= 0) {
           $modalCloseButton.trigger('click');
         }
-        $modalHeader.text(manageHeaderText());
+        $modalHeader.text(ManageHeaderText.all);
         ngProc($('body'));
         updateManageButtonText($mMngButton);
       }
@@ -492,10 +494,10 @@
 
     if (getall) {
       $mdContent.attr(ID.ORIGIN.USER, "");
-      $mdHeader.text(manageHeaderText());
+      $mdHeader.text(ManageHeaderText.all);
     }else{
       $mdContent.attr(ID.ORIGIN.USER, orgUserName);
-      $mdHeader.text('「'+orgUserName+'」と一致するNG登録一覧');
+      $mdHeader.text(ManageHeaderText.part(orgUserName));
     }
   }
 
@@ -562,7 +564,7 @@
     });
   }
 
-(function(){
+(function() {
 
 })
   const $body = $('body');
