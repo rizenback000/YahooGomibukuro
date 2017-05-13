@@ -1,41 +1,17 @@
 // ==UserScript==
 // @name            YahooGomibukuro
-// @namespace       https://detail.chiebukuro.yahoo.co.jp/qa/question_detail/q1224340137
+// @namespace       https://github.com/rizenback000/YahooGomibukuro
 // @description     頭の中ハッピーセットの回答者をNG
+// @version         1.1.0b
 // @include         https://detail.chiebukuro.yahoo.co.jp/qa/question_detail/*
 // @require         http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js
 // @grant GM_setValue
-// @grant GM_getValue
 // @grant GM_deleteValue
 // @grant GM_listValues
 // ==/UserScript==
 
 (function($) {
-  const ID = {
-    ORIGIN:{
-      USER: 'data-YahooGomibukuro_original-user',
-      ICON: 'data-YahooGomibukuro_original-icon'
-    },
-    MODAL:{
-      CONTENT:'id-YahooGomibukuro_modal-content',
-      HEADER: 'id-YahooGomibukuro_modal-header',
-      NGLIST: 'id-YahooGomibukuro_modal-nglist'
-    }
-  };
-
-  const $mMngPanel = $('<div></div>', { style: 'text-align:center; margin-bottom:1em;'} );
-  const $mMngButton = $('<button />', { text: 'test', style:'width:100%' });
-  //const $mModalOverlay = $('');
-  const $mModalContent = $('<div></div>', { id: ID.MODAL.CONTENT });
-  const $mModalHeader = $('<div></div>', { id: ID.MODAL.HEADER });
-  const $mNgMatchList = $('<select></select>', { id: ID.MODAL.NGLIST, size: '6', multiple: true });
-  const $mNgUserDelButton = $('<button />', { text: '削除' });
-  const $mNgUserEditButton = $('<button />', { text: '編集', disabled:true });
-  const $mModalCloseButton = $('<button />', { text: '閉じる' });
-
   const CONSTANT = {
-    PRODUCT: 'YahooGomibukuro',
-    VER: '1.1.0a',
     BTNTXT: {
       REG: 'NG登録',
       DEL: 'NG解除',
@@ -48,9 +24,32 @@
     }
   };
 
+  const ID = {
+    ORIGIN:{
+      USER: 'data-YahooGomibukuro_original-user',
+      ICON: 'data-YahooGomibukuro_original-icon'
+    },
+    MANAGE:{
+      CONTENT:'id-YahooGomibukuro_manage-content',
+      HEADER: 'id-YahooGomibukuro_manage-header',
+      NGLIST: 'id-YahooGomibukuro_manage-nglist'
+    }
+  };
 
-  /* 再利用系 */
+  const $mMngPanel = $('<div></div>', { style: 'text-align:center; margin-bottom:1em;'} );
+  const $mMngButton = $('<button />', { text: 'test', style:'width:100%' });
+  //const $mManageOverlay = $('');
+  const $mManageContent = $('<div></div>', { id: ID.MANAGE.CONTENT });
+  const $mManageHeader = $('<div></div>', { id: ID.MANAGE.HEADER });
+  const $mNgMatchList = $('<select></select>', { id: ID.MANAGE.NGLIST, size: '6', multiple: true });
+  const $mNgDelButton = $('<button />', { text: '削除' });
+  const $mNgEditButton = $('<button />', { text: '編集', disabled:true });
+  const $mManageCloseButton = $('<button />', { text: '閉じる' });
 
+
+  /**
+   *   正規表現が正しくユーザ名と一致するかチェックして一致しなければ確認を求める
+   */
   const confirmRegEx = {
     CONFIRM_RET:{
       MATCH: 1,
@@ -58,7 +57,7 @@
       FORCE_YES: -1
     },
     /**
-     * check - 正規表現が正しくユーザ名と一致するかチェックして一致しなければ確認を求める
+     * check - ダイアログを表示
      *
      * @param  {string} patternName パターン
      * @param  {string} testName テスト対象のユーザ名
@@ -327,7 +326,7 @@
    * @return {void}  description
    */
   function createManageWindow() {
-    const cssModalContent = {
+    const cssManageContent = {
       margin: '0',
       padding: '0px',
       border: '2px solid #aaa',
@@ -338,7 +337,7 @@
       color: '#ffffff'
     };
 
-    const cssModalHeader = {
+    const cssManageHeader = {
       color: '#0',
       marginBottom: '5px',
       padding: '5px',
@@ -352,26 +351,26 @@
     };
 
 
-    $mModalContent.css(cssModalContent);
-    $mModalHeader.css(cssModalHeader);
+    $mManageContent.css(cssManageContent);
+    $mManageHeader.css(cssManageHeader);
     $mNgMatchList.css(cssNGMatchList);
-    $mModalContent.append($mModalHeader);
-    $mModalContent.append($mNgMatchList);
-    $mModalContent.append($mNgUserDelButton);
-    $mModalContent.append($mNgUserEditButton);
-    $mModalContent.append($mModalCloseButton);
-    $('body').append($mModalContent);
+    $mManageContent.append($mManageHeader);
+    $mManageContent.append($mNgMatchList);
+    $mManageContent.append($mNgDelButton);
+    $mManageContent.append($mNgEditButton);
+    $mManageContent.append($mManageCloseButton);
+    $('body').append($mManageContent);
 
 
     //閉じるボタン
-    $mModalCloseButton.click(function() {
-      $mModalContent.fadeOut('fast', function() {
-        $mModalContent.hide();
+    $mManageCloseButton.click(function() {
+      $mManageContent.fadeOut('fast', function() {
+        $mManageContent.hide();
       });
     });
 
     //削除ボタン
-    $mNgUserDelButton.click(function() {
+    $mNgDelButton.click(function() {
       const $selectedOption = $mNgMatchList.children('option:selected');
       const delTgtAry = [];
       const SHOW_MAX = 4;
@@ -407,9 +406,9 @@
         $selectedOption.remove();
         if (delTgtAry.length > SHOW_MAX) alert('選択したNG設定の削除を完了しました。');
         if ($mNgMatchList.children().length <= 0) {
-          $mModalCloseButton.trigger('click');
+          $mManageCloseButton.trigger('click');
         }
-        updateHeaderText.all();
+        updateManageHeaderText.all();
         updateManageButtonText();
         ngProc($('body'));
       }
@@ -417,8 +416,8 @@
 
 
     //編集ボタン
-    $mNgUserEditButton.click(function() {
-      const orgUserName = $mModalContent.attr(ID.ORIGIN.USER);
+    $mNgEditButton.click(function() {
+      const orgUserName = $mManageContent.attr(ID.ORIGIN.USER);
       const $selectedOption = $mNgMatchList.children('option:selected');
       const selectName = $selectedOption.text();
       const changedName = prompt('変更後のNG設定を入力してください(正規表現利用可)', selectName);
@@ -447,7 +446,7 @@
 
         //一致するものが一つもなければモーダルを閉じる
         if ($mNgMatchList.children().length <= 0) {
-          $mModalCloseButton.trigger('click');
+          $mManageCloseButton.trigger('click');
         }
         ngProc($('body'));
       }
@@ -458,9 +457,9 @@
     $mNgMatchList.change(function() {
       //1つ以上の選択時には編集ボタン無効(面倒だから複数編集には対応しない)
       if ($mNgMatchList.children('option:selected').length == 1) {
-        $mNgUserEditButton.attr('disabled', false);
+        $mNgEditButton.attr('disabled', false);
       }else{
-        $mNgUserEditButton.attr('disabled', true);
+        $mNgEditButton.attr('disabled', true);
       }
     });
 
@@ -480,34 +479,34 @@
       $mNgMatchList.append($('<option></option>', { text: this }));
     });
 
-    centeringModalSyncer();
-    $mModalContent.fadeIn('fast');
+    centeringManageSyncer();
+    $mManageContent.fadeIn('fast');
 
     if (getall) {
-      $mModalContent.attr(ID.ORIGIN.USER, "");
-      updateHeaderText.all();
+      $mManageContent.attr(ID.ORIGIN.USER, "");
+      updateManageHeaderText.all();
     }else{
-      $mModalContent.attr(ID.ORIGIN.USER, orgUserName);
-      updateHeaderText.part(orgUserName);
+      $mManageContent.attr(ID.ORIGIN.USER, orgUserName);
+      updateManageHeaderText.part(orgUserName);
     }
   }
 
   /**
-   * CenteringModalSyncer - センタリングを実行する
+   * CenteringManageSyncer - センタリングを実行する
    *
    * @return {void}  description
    */
-  function centeringModalSyncer() {
+  function centeringManageSyncer() {
     //画面(ウィンドウ)の幅、高さを取得
     const w = $(window).width();
     const h = $(window).height();
 
-    // コンテンツ(#modal-content)の幅、高さを取得
-    const cw = $mModalContent.outerWidth();
-    const ch = $mModalContent.outerHeight();
+    // コンテンツ(#Manage-content)の幅、高さを取得
+    const cw = $mManageContent.outerWidth();
+    const ch = $mManageContent.outerHeight();
 
     //センタリングを実行する
-    $mModalContent.css({
+    $mManageContent.css({
       'left': ((w - cw) / 2) + 'px',
       'top': ((h - ch) / 2) + 'px'
     });
@@ -526,14 +525,14 @@
   /**
    * 管理モーダルのヘッダテキストを更新
    */
-  const updateHeaderText = {
+  const updateManageHeaderText = {
     /**
      * all - 全件取得時のヘッダテキスト更新
      *
      * @return {void}  description
      */
     all : function() {
-      $mModalHeader.text('NG登録一覧(登録数:'+GM_listValues().length+')');
+      $mManageHeader.text('NG登録一覧(登録数:'+GM_listValues().length+')');
     },
 
     /**
@@ -543,7 +542,7 @@
      * @return {void}             description
      */
     part : function(orgUserName) {
-      $mModalHeader.text('「'+orgUserName+'」と一致するNG登録一覧');
+      $mManageHeader.text('「'+orgUserName+'」と一致するNG登録一覧');
     }
   };
 
@@ -555,7 +554,7 @@
     createNGButton($body);
     ngProc($body);
     readMoreObserver();
-    $(window).resize(centeringModalSyncer);
+    $(window).resize(centeringManageSyncer);
 
   })();
 
